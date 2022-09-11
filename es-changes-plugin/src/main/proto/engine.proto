@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option java_package = "com.phonepe.plaftorm.es.replicator.changes.plugin.engine";
+
+
+message GetChangesRequest {
+  string indexName = 1;
+  string indexUUID = 2;
+  string shardId = 3;
+}
+
+message SerializedTranslog {
+  bytes translogBytes = 1;
+}
+
+message GetChangesResponse {
+  repeated SerializedTranslog changes = 1;
+  int64 fromSeqNo = 2;
+  int64 maxSeqNoOfUpdatesOrDeletes = 3;
+  int64 lastSyncedGlobalCheckpoint = 4;
+}
+
+service ChangesEngine {
+  rpc GetShardChanges(GetChangesRequest) returns (GetChangesResponse){};
+}
