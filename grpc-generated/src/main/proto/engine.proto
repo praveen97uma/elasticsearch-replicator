@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+option java_package = "com.phonepe.platform.es.replicator.grpc";
+option java_multiple_files = false;
+
+message GetChangesRequest {
+  string indexName = 1;
+  string indexUUID = 2;
+  int32 shardId = 3;
+
+  int64 fromSeqNo = 4;
+  int64 toSeqNo = 5;
+}
+
+message SerializedTranslog {
+  bytes translogBytes = 1;
+  int64 seqNo = 2;
+  string opType = 3;
+}
+
+message GetChangesResponse {
+  repeated SerializedTranslog changes = 1;
+  int64 fromSeqNo = 2;
+  int64 maxSeqNoOfUpdatesOrDeletes = 3;
+  int64 lastSyncedGlobalCheckpoint = 4;
+}
+
+message ESIndexMetadata {
+  string indexName = 1;
+  string indexUUID = 2;
+  int64 mappingVersion = 3;
+  int32 noOfRepliacs = 4;
+  int32 noOfShards = 5;
+  string state = 6;
+  bytes mapping = 7;
+  repeated ESAliasMetadata aliases = 8;
+  bytes settings = 9;
+  string mappingType = 10;
+
+  repeated ESShardRouting shardRoutings = 11;
+}
+
+message ESShardRouting {
+  string state = 1;
+  bool primary = 2;
+  optional string nodeId = 3;
+  int32 shardId = 4;
+  string indexName = 5;
+  bool active = 6;
+  bool assignedToNode = 7;
+}
+
+message GetIndexAndShardsMetadataRequest {
+  optional string nodeId = 1;
+}
+
+message GetIndexAndShardsMetadataResponse {
+  string currentNodeId = 1;
+  repeated ESIndexMetadata indexMetadatas = 3;
+}
+
+message ESShardId {
+  string indexName = 1;
+  string indexUUID = 2;
+  int32 shardId = 3;
+}
+
+message ApplyTranslogRequest {
+  SerializedTranslog translog = 1;
+  ESShardId shardId = 2;
+}
+
+message ApplyTranslogResponse {
+  bool success = 1;
+  string error = 2;
+  ErrorCode errorCode = 3;
+  int64 sequence = 4;
+
+  enum ErrorCode {
+    DEFAULT = 0;
+    INDEX_DOES_NOT_EXISTS = 1;
+    MAPPING_UPDATE_REQUIRED = 2;
+  }
+}
+
+message GetIndexMetadataRequest {
+  string indexName = 1;
+}
+
+message GetIndexMetadataResponse {
+  ESIndexMetadata indexMetadata = 1;
+}
+
+message ESCreateIndexRequest {
+  ESIndexMetadata indexMetadata = 2;
+}
+
+message ESCreateIndexResponse {
+  bool success = 1;
+}
+
+
+message ApplyMappingRequest {
+  string indexName = 1;
+  string mappingSource = 2;
+}
+
+message ApplyMappingResponse {
+  bool success = 1;
+}
+
+message GetMappingRequest {
+  string indexName = 1;
+}
+
+message GetMappingResponse {
+  string indexName = 1;
+  string mappingSource = 2;
+}
+
+message CloseIndicesRequest {
+  repeated string indexName = 1;
+}
+
+message CloseIndicesResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message OpenIndicesRequest {
+  repeated string indexName = 1;
+}
+
+message OpenIndicesResponse {
+  bool success = 1;
+}
+
+message ESAliasMetadata {
+  string alias = 1;
+  string indexRouting = 2;
+  string searchRouting = 3;
+  bool writeIndex = 4;
+  bool isHidden = 5;
+}
+
+service ChangesEngine {
+  rpc GetShardChanges(GetChangesRequest) returns (GetChangesResponse) {};
+  rpc GetIndexAndShardsMetadata(GetIndexAndShardsMetadataRequest) returns (GetIndexAndShardsMetadataResponse) {};
+  rpc ApplyTranslog(ApplyTranslogRequest) returns (ApplyTranslogResponse) {};
+  rpc GetIndexMetadata(GetIndexMetadataRequest) returns (GetIndexMetadataResponse) {};
+  rpc CreateIndex(ESCreateIndexRequest) returns (ESCreateIndexResponse) {};
+  rpc SyncMapping(ApplyMappingRequest) returns (ApplyMappingResponse) {};
+  rpc GetMapping(GetMappingRequest) returns (GetMappingResponse) {};
+  rpc CloseIndices(CloseIndicesRequest) returns (CloseIndicesResponse) {};
+  rpc OpenIndices(OpenIndicesRequest) returns (OpenIndicesResponse) {};
+}

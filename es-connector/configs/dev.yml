@@ -1,0 +1,26 @@
+name: es-replicator-connector
+server:
+  applicationConnectors:
+    - type: http
+      port: 3000
+  adminConnectors:
+    - type: http
+      port: 3001
+  applicationContextPath: /
+  requestLog:
+    appenders:
+      - type: console
+        timeZone: IST
+  gzip:
+    syncFlush: true
+
+logging:
+  level: INFO
+  loggers:
+    com.phonepe.platform: DEBUG
+
+  appenders:
+    - type: console
+      threshold: TRACE
+      timeZone: IST
+      logFormat: "%(%-5level) [%date] [%logger{0} - %X{instanceLogId}] %message%n"

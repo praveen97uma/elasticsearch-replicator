@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option java_package = "com.phonepe.platform.es.replicator.grpc.events";
+option java_multiple_files = false;
+
+import "engine.proto";
+
+message ChangeEvent {
+  SerializedTranslog translog = 1;
+  int64 connectorSentTimestamp = 2;
+}

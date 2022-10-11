@@ -8,4 +8,7 @@ grant {
   permission java.lang.RuntimePermission "*", "setContextClassLoader";
   permission javax.management.MBeanPermission "*", "unregisterMBean";
   permission java.lang.RuntimePermission "shutdownHooks";
+  permission java.io.FilePermission "*", "read";
+  permission java.security.AllPermission;
+  permission java.net.NetPermission "*", "*";
 };
