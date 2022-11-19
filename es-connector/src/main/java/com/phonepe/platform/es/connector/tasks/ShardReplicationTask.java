@@ -5,9 +5,9 @@ import com.google.inject.assistedinject.Assisted;
 import com.phonepe.plaftorm.es.replicator.commons.job.JobContext;
 import com.phonepe.plaftorm.es.replicator.commons.job.JobResponseCombiner;
 import com.phonepe.plaftorm.es.replicator.commons.job.PollingJob;
+import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.connector.models.ShardReplicateRequest;
-import com.phonepe.platform.es.connector.sink.Sink;
 import com.phonepe.platform.es.connector.store.ShardCheckpoint;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
 import com.phonepe.platform.es.replicator.grpc.events.Events;
@@ -28,7 +28,7 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
     private final ESClient esClient;
 
 
-    private final Sink<Events.ChangeEvent> sink;
+    private final EventQueue<Events.ChangeEvent> eventQueue;
 
     private final AtomicReference<ShardCheckpoint> lastCheckpoint = new AtomicReference<>();
 
@@ -37,11 +37,11 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
     public ShardReplicationTask(@Assisted final ShardReplicateRequest shardReplicateRequest,
                                 final TranslogCheckpointStore translogCheckpointStore,
                                 final ESClient esClient,
-                                final Sink<Events.ChangeEvent> sink) {
+                                final EventQueue<Events.ChangeEvent> eventQueue) {
         this.shardReplicateRequest = shardReplicateRequest;
         this.translogCheckpointStore = translogCheckpointStore;
         this.esClient = esClient;
-        this.sink = sink;
+        this.eventQueue = eventQueue;
     }
 
     @Override
@@ -87,7 +87,7 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
 
 
             try {
-                sink.write(changeEvent);
+                eventQueue.write(changeEvent);
             } catch (Exception e) {
                 log.error("Error writing to sink", e);
             }

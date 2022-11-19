@@ -31,7 +31,9 @@ import java.util.function.Supplier;
 public class ChangesPlugin extends Plugin implements ActionPlugin, PersistentTaskPlugin {
     @Override
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings, IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter, IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
-        return Arrays.asList(new GetIndexMetadata(settings, restController), new GetShardHistoryOperations(settings, restController));
+        return Arrays.asList(
+                new GetIndexMetadata(settings, restController),
+                new GetShardHistoryOperations(settings, restController));
     }
 
     @Override

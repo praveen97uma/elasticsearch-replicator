@@ -1,4 +1,4 @@
-package com.phonepe.platform.es.connector.sink;
+package com.phonepe.plaftorm.es.replicator.commons.queue;
 
 import lombok.Builder;
 import lombok.Value;

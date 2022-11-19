@@ -16,6 +16,7 @@
         <module>es-client</module>
         <module>replicator-models</module>
         <module>es-connector-dw-bundle</module>
+        <module>replicator-queue</module>
     </modules>
 
     <properties>

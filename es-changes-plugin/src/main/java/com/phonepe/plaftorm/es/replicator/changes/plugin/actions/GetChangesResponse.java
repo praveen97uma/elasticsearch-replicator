@@ -12,10 +12,10 @@ import java.util.List;
 
 @Getter
 public class GetChangesResponse extends ActionResponse {
-    private Collection<Translog.Operation> changes;
-    private long fromSeqNo;
-    private long  maxSeqNoOfUpdatesOrDeletes;
-    private long lastSyncedGlobalCheckpoint;
+    private final Collection<Translog.Operation> changes;
+    private final long fromSeqNo;
+    private final long  maxSeqNoOfUpdatesOrDeletes;
+    private final long lastSyncedGlobalCheckpoint;
 
     public GetChangesResponse(StreamInput inp) throws IOException {
         this.changes = inp.readList(Translog.Operation::readOperation);

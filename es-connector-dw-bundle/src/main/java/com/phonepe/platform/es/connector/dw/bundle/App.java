@@ -1,17 +1,10 @@
 package com.phonepe.platform.es.connector.dw.bundle;
 
 import com.google.inject.Stage;
-import com.phonepe.plaftorm.es.replicator.commons.job.JobExecutor;
-import com.phonepe.platform.es.connector.ESConnectorModule;
-import com.phonepe.platform.es.connector.ESREplicationConnector;
 import com.phonepe.platform.es.connector.dw.bundle.guice.ReplicationDepsModule;
-import com.phonepe.platform.es.connector.sink.Sink;
-import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
-import com.phonepe.platform.es.replicator.grpc.events.Events;
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
-import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import ru.vyarus.dropwizard.guice.GuiceBundle;

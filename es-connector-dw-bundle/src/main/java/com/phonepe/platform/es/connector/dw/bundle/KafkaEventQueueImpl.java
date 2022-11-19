@@ -1,11 +1,9 @@
 package com.phonepe.platform.es.connector.dw.bundle;
 
-import com.phonepe.platform.es.connector.sink.Sink;
-import com.phonepe.platform.es.connector.sink.SinkType;
-import com.phonepe.platform.es.connector.sink.WriteResult;
+import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
+import com.phonepe.plaftorm.es.replicator.commons.queue.QueueType;
+import com.phonepe.plaftorm.es.replicator.commons.queue.WriteResult;
 import com.phonepe.platform.es.replicator.grpc.events.Events;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -20,10 +18,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
-public class KafkaSinkImpl implements Sink<Events.ChangeEvent> {
+public class KafkaEventQueueImpl implements EventQueue<Events.ChangeEvent> {
     private final KafkaProducer<String, Events.ChangeEvent> producer;
 
-    public KafkaSinkImpl() {
+    public KafkaEventQueueImpl() {
         VertxOptions vertxOptions = new VertxOptions();
         vertxOptions.setEventLoopPoolSize(4);
         vertxOptions.setPreferNativeTransport(true);
@@ -48,8 +46,8 @@ public class KafkaSinkImpl implements Sink<Events.ChangeEvent> {
     }
 
     @Override
-    public SinkType type() {
-        return SinkType.KAFKA;
+    public QueueType type() {
+        return QueueType.KAFKA;
     }
 
     @Override

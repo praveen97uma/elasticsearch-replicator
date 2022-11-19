@@ -5,19 +5,18 @@ import com.google.inject.Provides;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.phonepe.plaftorm.es.replicator.commons.job.Job;
 import com.phonepe.plaftorm.es.replicator.commons.job.JobExecutor;
+import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.client.ESClientConfiguration;
 import com.phonepe.platform.es.client.ESGrpcClient;
 import com.phonepe.platform.es.connector.factories.IndexReplicationTaskFactory;
 import com.phonepe.platform.es.connector.factories.ShardReplicationTaskFactory;
-import com.phonepe.platform.es.connector.sink.Sink;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
 import com.phonepe.platform.es.connector.tasks.IndexReplicationTask;
 import com.phonepe.platform.es.connector.tasks.ShardReplicationTask;
 import com.phonepe.platform.es.replicator.grpc.events.Events;
 
 import javax.inject.Singleton;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public abstract class ESConnectorModule extends AbstractModule {
@@ -54,5 +53,5 @@ public abstract class ESConnectorModule extends AbstractModule {
         return new ESGrpcClient(clientConfiguration);
     }
 
-    public abstract Sink<Events.ChangeEvent> provideChangeEventSink();
+    public abstract EventQueue<Events.ChangeEvent> provideChangeEventSink();
 }

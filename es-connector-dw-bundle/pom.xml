@@ -42,13 +42,13 @@
         <dependency>
             <groupId>com.phonepe.platform</groupId>
             <artifactId>grpc-generated</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.phonepe.platform</groupId>
             <artifactId>es-connector</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.parent.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

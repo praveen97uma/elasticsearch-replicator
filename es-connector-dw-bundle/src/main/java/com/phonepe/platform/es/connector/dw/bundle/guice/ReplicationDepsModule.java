@@ -4,11 +4,9 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Injector;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.phonepe.plaftorm.es.replicator.commons.job.JobExecutor;
-import com.phonepe.platform.es.connector.ESConnectorModule;
-import com.phonepe.platform.es.connector.dw.bundle.KafkaSinkImpl;
+import com.phonepe.platform.es.connector.dw.bundle.KafkaEventQueueImpl;
 import com.phonepe.platform.es.connector.dw.bundle.ZkTranslogCheckpointStore;
-import com.phonepe.platform.es.connector.sink.Sink;
+import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
 import com.phonepe.platform.es.replicator.grpc.events.Events;
 import org.apache.curator.framework.CuratorFramework;
@@ -40,7 +38,7 @@ public class ReplicationDepsModule extends AbstractModule {
 
     @Provides
     @Singleton
-    Sink<Events.ChangeEvent> provideSink() {
-        return new KafkaSinkImpl();
+    EventQueue<Events.ChangeEvent> provideSink() {
+        return new KafkaEventQueueImpl();
     }
 }

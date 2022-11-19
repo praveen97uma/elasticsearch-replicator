@@ -2,20 +2,20 @@ package com.phonepe.platform.es.connector.dw.bundle;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.phonepe.platform.es.connector.ESREplicationConnector;
-import com.phonepe.platform.es.connector.sink.Sink;
+import com.phonepe.platform.es.connector.ESReplicationConnector;
+import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
 import com.phonepe.platform.es.replicator.grpc.events.Events;
 import io.dropwizard.lifecycle.Managed;
 
 @Singleton
 public class ESReplicationConnectorManaged implements Managed {
-    private final ESREplicationConnector esrEplicationConnector;
+    private final ESReplicationConnector esrEplicationConnector;
 
     @Inject
-    public ESReplicationConnectorManaged(TranslogCheckpointStore checkpointStore, Sink<Events.ChangeEvent> changeEventSink) {
-        esrEplicationConnector = ESREplicationConnector.builder()
-                .changeEventsSink(changeEventSink)
+    public ESReplicationConnectorManaged(TranslogCheckpointStore checkpointStore, EventQueue<Events.ChangeEvent> changeEventEventQueue) {
+        esrEplicationConnector = ESReplicationConnector.builder()
+                .changeEventsSink(changeEventEventQueue)
                 .translogCheckpointStore(checkpointStore)
                 .build();
     }
