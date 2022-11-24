@@ -1,7 +1,7 @@
 package com.phonepe.platform.es.connector.models;
 
-import com.phonepe.platform.es.replicator.grpc.Engine;
-import com.phonepe.platform.es.replicator.grpc.Engine.ESShardRouting;
+import com.phonepe.platform.es.replicator.models.EsIndexMetadata;
+import com.phonepe.platform.es.replicator.models.EsShardRouting;
 import lombok.Builder;
 import lombok.Value;
 
@@ -10,8 +10,8 @@ import lombok.Value;
 public class ShardReplicateRequest {
     String currentNodeId;
 
-    Engine.ESIndexMetadata indexMetadata;
-    ESShardRouting shardRouting;
+    EsIndexMetadata indexMetadata;
+    EsShardRouting shardRouting;
 
     public String getShardId() {
         return fromShardRouting(shardRouting);
@@ -21,7 +21,7 @@ public class ShardReplicateRequest {
         return String.format("%s:%d", indexName, shardId);
     }
 
-    public static String fromShardRouting(ESShardRouting routing) {
+    public static String fromShardRouting(EsShardRouting routing) {
         return getShardId(routing.getIndexName(), routing.getShardId());
     }
 }

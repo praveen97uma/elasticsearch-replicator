@@ -1,4 +1,4 @@
-package com.phonepe.plaftorm.es.replicator.changes.plugin.rest;
+package com.phonepe.platform.es.replicator.models;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

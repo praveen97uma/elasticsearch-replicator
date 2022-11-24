@@ -1,5 +1,6 @@
 package com.phonepe.platform.es.connector.dw.bundle.guice;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Injector;
 import com.google.inject.Provides;
@@ -8,7 +9,7 @@ import com.phonepe.platform.es.connector.dw.bundle.KafkaEventQueueImpl;
 import com.phonepe.platform.es.connector.dw.bundle.ZkTranslogCheckpointStore;
 import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
-import com.phonepe.platform.es.replicator.grpc.events.Events;
+import com.phonepe.platform.es.replicator.models.changes.ChangeEvent;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
@@ -38,7 +39,7 @@ public class ReplicationDepsModule extends AbstractModule {
 
     @Provides
     @Singleton
-    EventQueue<Events.ChangeEvent> provideSink() {
-        return new KafkaEventQueueImpl();
+    EventQueue<ChangeEvent> provideSink(ObjectMapper mapper) {
+        return new KafkaEventQueueImpl(mapper);
     }
 }

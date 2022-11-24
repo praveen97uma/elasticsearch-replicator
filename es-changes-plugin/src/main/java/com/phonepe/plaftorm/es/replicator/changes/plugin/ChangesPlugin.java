@@ -2,10 +2,9 @@ package com.phonepe.plaftorm.es.replicator.changes.plugin;
 
 import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesAction;
 import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.TransportGetChangesAction;
-import com.phonepe.plaftorm.es.replicator.changes.plugin.grpc.ChangesPluginGrpcServer;
 import com.phonepe.plaftorm.es.replicator.changes.plugin.injection.CDCModule;
 import com.phonepe.plaftorm.es.replicator.changes.plugin.rest.GetIndexMetadata;
-import com.phonepe.plaftorm.es.replicator.changes.plugin.rest.GetShardHistoryOperations;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.rest.GetShardChanges;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
@@ -33,12 +32,12 @@ public class ChangesPlugin extends Plugin implements ActionPlugin, PersistentTas
     public List<RestHandler> getRestHandlers(Settings settings, RestController restController, ClusterSettings clusterSettings, IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter, IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
         return Arrays.asList(
                 new GetIndexMetadata(settings, restController),
-                new GetShardHistoryOperations(settings, restController));
+                new GetShardChanges(settings, restController));
     }
 
     @Override
     public Collection<Class<? extends LifecycleComponent>> getGuiceServiceClasses() {
-        return Arrays.asList(ChangesPluginGrpcServer.class);
+        return List.of();
     }
     @Override
     public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {

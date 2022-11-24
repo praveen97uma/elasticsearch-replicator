@@ -10,10 +10,10 @@ import com.phonepe.plaftorm.es.replicator.commons.lifecycle.ManagedLifecycle;
 import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.connector.factories.IndexReplicationTaskFactory;
 import com.phonepe.platform.es.connector.models.IndexReplicateRequest;
-import com.phonepe.platform.es.replicator.grpc.Engine.GetIndexAndShardsMetadataResponse;
+import com.phonepe.platform.es.replicator.models.GetIndexAndShardsMetadataRequest;
+import com.phonepe.platform.es.replicator.models.GetIndexAndShardsMetadataResponse;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.phonepe.platform.es.replicator.grpc.Engine.*;
 
 @Slf4j
 @Singleton
@@ -34,18 +34,22 @@ public class AutoFollowTask extends PollingTask implements ManagedLifecycle {
 
     @Override
     public void execute() {
-        GetIndexAndShardsMetadataRequest request = GetIndexAndShardsMetadataRequest.newBuilder()
+        GetIndexAndShardsMetadataRequest request = GetIndexAndShardsMetadataRequest.builder()
                 .build();
 
-        GetIndexAndShardsMetadataResponse response = esClient.getIndexAndShardsMetadata(request);
+        try {
+            GetIndexAndShardsMetadataResponse response = esClient.getIndexAndShardsMetadata(request);
 //        log.info("Index metadatas {}", response);
 
-        response.getIndexMetadatasList().stream()
-                .map(indexMetadata -> IndexReplicateRequest.builder()
-                        .currentNodeId(response.getCurrentNodeId())
-                        .indexMetadata(indexMetadata)
-                        .build())
-                .forEach(this::handleIndexReplication);
+            response.getIndexMetadatas().stream()
+                    .map(indexMetadata -> IndexReplicateRequest.builder()
+                            .currentNodeId(response.getCurrentNodeId())
+                            .indexMetadata(indexMetadata)
+                            .build())
+                    .forEach(this::handleIndexReplication);
+        } catch (Exception e) {
+            log.error("Error ", e);
+        }
     }
 
     private void handleIndexReplication(final IndexReplicateRequest replicateRequest) {

@@ -8,13 +8,12 @@ import com.phonepe.plaftorm.es.replicator.commons.job.JobExecutor;
 import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.client.ESClientConfiguration;
-import com.phonepe.platform.es.client.ESGrpcClient;
 import com.phonepe.platform.es.connector.factories.IndexReplicationTaskFactory;
 import com.phonepe.platform.es.connector.factories.ShardReplicationTaskFactory;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
 import com.phonepe.platform.es.connector.tasks.IndexReplicationTask;
 import com.phonepe.platform.es.connector.tasks.ShardReplicationTask;
-import com.phonepe.platform.es.replicator.grpc.events.Events;
+import com.phonepe.platform.es.replicator.models.changes.ChangeEvent;
 
 import javax.inject.Singleton;
 import java.util.concurrent.Executors;
@@ -47,11 +46,11 @@ public abstract class ESConnectorModule extends AbstractModule {
     public ESClient esClient() {
         ESClientConfiguration clientConfiguration = ESClientConfiguration.builder()
                 .host("localhost")
-                .port(9400)
+                .port(9200)
                 .build();
 
-        return new ESGrpcClient(clientConfiguration);
+        return new com.phonepe.platform.es.client.ESRestClientImpl(clientConfiguration);
     }
 
-    public abstract EventQueue<Events.ChangeEvent> provideChangeEventSink();
+    public abstract EventQueue<ChangeEvent> provideChangeEventSink();
 }

@@ -11,4 +11,5 @@ grant {
   permission java.io.FilePermission "*", "read";
   permission java.security.AllPermission;
   permission java.net.NetPermission "*", "*";
+  permission java.lang.RuntimePermission "accessDeclaredMembers";
 };

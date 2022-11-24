@@ -6,7 +6,7 @@ import com.google.inject.Provides;
 import com.phonepe.plaftorm.es.replicator.commons.lifecycle.ManagedComponentsRunner;
 import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
-import com.phonepe.platform.es.replicator.grpc.events.Events;
+import com.phonepe.platform.es.replicator.models.changes.ChangeEvent;
 import lombok.Builder;
 
 import javax.inject.Singleton;
@@ -18,7 +18,7 @@ public class ESReplicationConnector {
 
 
     @Builder
-    public ESReplicationConnector(final TranslogCheckpointStore translogCheckpointStore, final EventQueue<Events.ChangeEvent> changeEventsEventQueue) {
+    public ESReplicationConnector(final TranslogCheckpointStore translogCheckpointStore, final EventQueue<ChangeEvent> changeEventsEventQueue) {
         injector = Guice.createInjector(new ESConnectorModule() {
             @Provides
             @Singleton
@@ -31,7 +31,7 @@ public class ESReplicationConnector {
             @Provides
             @Singleton
             @Override
-            public EventQueue<Events.ChangeEvent> provideChangeEventSink() {
+            public EventQueue<ChangeEvent> provideChangeEventSink() {
                 return changeEventsEventQueue;
             }
         });

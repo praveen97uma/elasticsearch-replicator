@@ -1,7 +1,6 @@
 package com.phonepe.platform.es.connector.models;
 
-import com.phonepe.platform.es.replicator.grpc.Engine;
-import com.phonepe.platform.es.replicator.grpc.Engine.ESIndexMetadata;
+import com.phonepe.platform.es.replicator.models.EsIndexMetadata;
 import lombok.Builder;
 import lombok.Value;
 
@@ -12,5 +11,5 @@ import java.util.List;
 public class IndexReplicateRequest {
     String currentNodeId;
 
-    ESIndexMetadata indexMetadata;
+    EsIndexMetadata indexMetadata;
 }

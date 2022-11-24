@@ -23,12 +23,12 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>${elasticsearch.version}</version>
         </dependency>
         <dependency>
             <groupId>com.phonepe.platform</groupId>
-            <artifactId>grpc-generated</artifactId>
+            <artifactId>replicator-models</artifactId>
             <version>${project.parent.version}</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
     <build>

@@ -4,7 +4,6 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
-import static com.phonepe.platform.es.replicator.grpc.Engine.*;
 
 @Value
 @Builder

@@ -1,9 +1,10 @@
 package com.phonepe.platform.es.connector.dw.bundle;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
 import com.phonepe.plaftorm.es.replicator.commons.queue.QueueType;
 import com.phonepe.plaftorm.es.replicator.commons.queue.WriteResult;
-import com.phonepe.platform.es.replicator.grpc.events.Events;
+import com.phonepe.platform.es.replicator.models.changes.ChangeEvent;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -18,10 +19,13 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
-public class KafkaEventQueueImpl implements EventQueue<Events.ChangeEvent> {
-    private final KafkaProducer<String, Events.ChangeEvent> producer;
+public class KafkaEventQueueImpl implements EventQueue<ChangeEvent> {
+    private final KafkaProducer<String, ChangeEvent> producer;
+    private final ObjectMapper mapper;
 
-    public KafkaEventQueueImpl() {
+    public KafkaEventQueueImpl(final ObjectMapper mapper) {
+        this.mapper = mapper;
+
         VertxOptions vertxOptions = new VertxOptions();
         vertxOptions.setEventLoopPoolSize(4);
         vertxOptions.setPreferNativeTransport(true);
@@ -36,7 +40,7 @@ public class KafkaEventQueueImpl implements EventQueue<Events.ChangeEvent> {
         producer = KafkaProducer.createShared(vertx, "message-sender", config,
                 new StringSerializer(), (s, changeEvent) -> {
                     try {
-                        return changeEvent.toByteArray();
+                        return mapper.writeValueAsBytes(changeEvent);
                     } catch (Exception e) {
                         log.info("Error serializing ", e);
                         return null;
@@ -51,14 +55,14 @@ public class KafkaEventQueueImpl implements EventQueue<Events.ChangeEvent> {
     }
 
     @Override
-    public WriteResult write(final Events.ChangeEvent change) throws Exception {
+    public WriteResult write(final ChangeEvent change) throws Exception {
         return writeBatch(List.of(change));
     }
 
     @Override
-    public WriteResult writeBatch(final List<Events.ChangeEvent> changes) throws Exception {
+    public WriteResult writeBatch(final List<ChangeEvent> changes) throws Exception {
         changes.forEach(event -> {
-            KafkaProducerRecord<String, Events.ChangeEvent> srecord = new KafkaProducerRecordImpl<>(
+            KafkaProducerRecord<String, ChangeEvent> srecord = new KafkaProducerRecordImpl<>(
                     "es-changes-v1",
                     "event",
                     event);

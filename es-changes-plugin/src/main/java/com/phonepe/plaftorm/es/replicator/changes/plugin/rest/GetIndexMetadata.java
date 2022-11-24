@@ -1,24 +1,22 @@
 package com.phonepe.plaftorm.es.replicator.changes.plugin.rest;
 
-import com.carrotsearch.hppc.cursors.ObjectCursor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.phonepe.platform.es.replicator.models.EsIndexMetadata;
+import com.phonepe.platform.es.replicator.models.EsShardRouting;
+import com.phonepe.platform.es.replicator.models.GetIndexAndShardsMetadataResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.rest.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class GetIndexMetadata extends BaseRestHandler {
@@ -46,42 +44,58 @@ public class GetIndexMetadata extends BaseRestHandler {
                     .getMetaData()
                     .getIndices();
 
-            List<ShardRouting> shardRoutings = new ArrayList<>(nodeClient.admin()
+            List<EsShardRouting> shardRoutings = new ArrayList<>(nodeClient.admin()
                     .cluster()
                     .prepareState()
                     .get()
                     .getState()
                     .routingTable()
-                    .allShards());
+                    .allShards()).stream()
+                    .map(GetIndexMetadata::translateShardRouting)
+                    .collect(Collectors.toList());
+
+            Map<String, List<EsShardRouting>> routingsMap = shardRoutings.stream()
+                    .collect(Collectors.groupingBy(EsShardRouting::getIndexName));
 
 
-            class ShardMetaData {
-
-            }
 
 
-            List<IndexData> metaDatas = new ArrayList<>();
-            indices.values().forEach((Consumer<ObjectCursor<IndexMetaData>>) indexMetaDataObjectCursor -> {
-                IndexMetaData data = indexMetaDataObjectCursor.value;
-                IndexData idata = IndexData.builder()
-                        .indexName(data.getIndex().getName())
-                        .indexUUID(data.getIndex().getUUID())
-                        .mappingVersion(data.getMappingVersion())
-                        .noOfReplicas(data.getNumberOfReplicas())
-                        .noOfShards(data.getNumberOfShards())
-                        .state(data.getState())
-                        .build();
-                metaDatas.add(idata);
+            List<EsIndexMetadata> indexMetadatas = new ArrayList<>();
+            indices.valuesIt().forEachRemaining(indexMetaData -> {
+                indexMetadatas.add(EsIndexMetadata.builder()
+                        .indexName(indexMetaData.getIndex().getName())
+                        .indexUUID(indexMetaData.getIndexUUID())
+                        .noOfShards(indexMetaData.getNumberOfShards())
+                        .noOfReplicas(indexMetaData.getNumberOfReplicas())
+                        .state(indexMetaData.getState().name())
+                        .mappingVersion(indexMetaData.getMappingVersion())
+                        .mapping(indexMetaData.mapping().source().compressed())
+                        .mappingType(indexMetaData.mapping().type())
+                        .shardRoutings(routingsMap.getOrDefault(indexMetaData.getIndex().getName(), List.of()))
+                        .build());
             });
 
             XContentBuilder builder = XContentFactory.jsonBuilder();
-            builder.startObject();
-            builder.field("currentNodeId", nodeClient.getLocalNodeId());
-            builder.field("indices", metaDatas);
-            builder.field("shardRoutings", shardRoutings);
-            builder.endObject();
-            BytesRestResponse response = new BytesRestResponse(RestStatus.OK, builder);
-            channel.sendResponse(response);
+
+            GetIndexAndShardsMetadataResponse res = GetIndexAndShardsMetadataResponse.builder()
+                    .currentNodeId(nodeClient.getLocalNodeId())
+                    .indexMetadatas(indexMetadatas)
+                    .build();
+
+            channel.sendResponse(
+                    new BytesRestResponse(RestStatus.OK, res.toXContent(builder, ToXContent.EMPTY_PARAMS)));
         };
+    }
+
+    private static EsShardRouting translateShardRouting(final ShardRouting shardRouting) {
+        return EsShardRouting.builder()
+                .shardId(shardRouting.id())
+                .indexName(shardRouting.getIndexName())
+                .primary(shardRouting.primary())
+                .state(shardRouting.state().name())
+                .assignedToNode(shardRouting.assignedToNode())
+                .active(shardRouting.active())
+                .nodeId(shardRouting.currentNodeId())
+                .build();
     }
 }

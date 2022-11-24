@@ -8,13 +8,13 @@ import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.connector.factories.ShardReplicationTaskFactory;
 import com.phonepe.platform.es.connector.models.IndexReplicateRequest;
 import com.phonepe.platform.es.connector.models.ShardReplicateRequest;
+import com.phonepe.platform.es.replicator.models.EsShardRouting;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.phonepe.platform.es.replicator.grpc.Engine.*;
 
 @Slf4j
 public class IndexReplicationTask implements Job<Boolean> {
@@ -67,10 +67,10 @@ public class IndexReplicationTask implements Job<Boolean> {
     }
 
     private void launchJobsForNewShards() {
-        List<ESShardRouting> newShards = indexReplicateRequest.getIndexMetadata().getShardRoutingsList().stream()
+        List<EsShardRouting> newShards = indexReplicateRequest.getIndexMetadata().getShardRoutings().stream()
+                .filter(routing -> routing.getState().equals("STARTED"))
                 .filter(routing -> routing.getNodeId().equals(indexReplicateRequest.getCurrentNodeId()))
                 .filter(routing -> !jobExecutor.isJobRunning(ShardReplicateRequest.fromShardRouting(routing)))
-                .filter(routing -> routing.getState().equals("STARTED"))
                 .collect(Collectors.toList());
 
         if (newShards.isEmpty()) {

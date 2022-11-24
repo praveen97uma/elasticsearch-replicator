@@ -10,14 +10,18 @@ import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.connector.models.ShardReplicateRequest;
 import com.phonepe.platform.es.connector.store.ShardCheckpoint;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
-import com.phonepe.platform.es.replicator.grpc.events.Events;
+import com.phonepe.platform.es.replicator.models.EsShardRouting;
+import com.phonepe.platform.es.replicator.models.GetChangesRequest;
+import com.phonepe.platform.es.replicator.models.EsGetChangesResponse;
+import com.phonepe.platform.es.replicator.models.SerializedTranslog;
+import com.phonepe.platform.es.replicator.models.changes.ChangeEvent;
 import lombok.Builder;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.phonepe.platform.es.replicator.grpc.Engine.*;
 
 @Slf4j
 public class ShardReplicationTask extends PollingJob<Boolean> {
@@ -28,7 +32,7 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
     private final ESClient esClient;
 
 
-    private final EventQueue<Events.ChangeEvent> eventQueue;
+    private final EventQueue<ChangeEvent> eventQueue;
 
     private final AtomicReference<ShardCheckpoint> lastCheckpoint = new AtomicReference<>();
 
@@ -37,7 +41,7 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
     public ShardReplicationTask(@Assisted final ShardReplicateRequest shardReplicateRequest,
                                 final TranslogCheckpointStore translogCheckpointStore,
                                 final ESClient esClient,
-                                final EventQueue<Events.ChangeEvent> eventQueue) {
+                                final EventQueue<ChangeEvent> eventQueue) {
         this.shardReplicateRequest = shardReplicateRequest;
         this.translogCheckpointStore = translogCheckpointStore;
         this.esClient = esClient;
@@ -61,28 +65,33 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
     }
 
     @Override
+    @SneakyThrows
     public Boolean poll(final JobContext<Boolean> context, final JobResponseCombiner<Boolean> responseCombiner) {
-        ESShardRouting shardRouting = shardReplicateRequest.getShardRouting();
+        EsShardRouting shardRouting = shardReplicateRequest.getShardRouting();
 
-        GetChangesRequest request = GetChangesRequest.newBuilder()
-                .setShardId(shardRouting.getShardId())
-                .setIndexName(shardRouting.getIndexName())
-                .setIndexUUID(shardReplicateRequest.getIndexMetadata().getIndexUUID())
-                .setFromSeqNo(getStartSequence())
-                .setToSeqNo(getStartSequence() + 10)
+        GetChangesRequest request = GetChangesRequest.builder()
+                .shardId(shardRouting.getShardId())
+                .indexName(shardRouting.getIndexName())
+                .indexUUID(shardReplicateRequest.getIndexMetadata().getIndexUUID())
+                .fromSeqNo(getStartSequence())
+                .toSeqNo(getStartSequence() + 10)
                 .build();
 
-        GetChangesResponse response = esClient.getShardChanges(request);
-        log.info("Received {} changes for {}", response.getChangesCount(), jobId());
-        if (!response.getChangesList().isEmpty()) {
+        EsGetChangesResponse response = esClient.getShardChanges(request);
+
+        if (response == null) {
+            return false;
+        }
+        log.info("Received {} changes for {}", response.getChanges().size(), jobId());
+        if (!response.getChanges().isEmpty()) {
 
 
-            SerializedTranslog translog = response.getChangesList().get(response.getChangesList().size() - 1);
+            SerializedTranslog translog = response.getChanges().get(response.getChanges().size() - 1);
 
 
-            Events.ChangeEvent changeEvent = Events.ChangeEvent.newBuilder()
-                    .setTranslog(translog)
-                    .setConnectorSentTimestamp(System.currentTimeMillis())
+            ChangeEvent changeEvent = ChangeEvent.builder()
+                    .translog(translog)
+                    .connectorSentTimestamp(System.currentTimeMillis())
                     .build();
 
 
