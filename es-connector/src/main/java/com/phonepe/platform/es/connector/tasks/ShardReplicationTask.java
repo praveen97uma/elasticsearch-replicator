@@ -6,20 +6,19 @@ import com.phonepe.plaftorm.es.replicator.commons.job.JobContext;
 import com.phonepe.plaftorm.es.replicator.commons.job.JobResponseCombiner;
 import com.phonepe.plaftorm.es.replicator.commons.job.PollingJob;
 import com.phonepe.plaftorm.es.replicator.commons.queue.EventQueue;
+import com.phonepe.plaftorm.es.replicator.commons.queue.WriteResult;
 import com.phonepe.platform.es.client.ESClient;
 import com.phonepe.platform.es.connector.models.ShardReplicateRequest;
 import com.phonepe.platform.es.connector.store.ShardCheckpoint;
 import com.phonepe.platform.es.connector.store.TranslogCheckpointStore;
-import com.phonepe.platform.es.replicator.models.EsShardRouting;
-import com.phonepe.platform.es.replicator.models.GetChangesRequest;
-import com.phonepe.platform.es.replicator.models.EsGetChangesResponse;
-import com.phonepe.platform.es.replicator.models.SerializedTranslog;
+import com.phonepe.platform.es.replicator.models.*;
 import com.phonepe.platform.es.replicator.models.changes.ChangeEvent;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
+import javax.inject.Named;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -36,16 +35,20 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
 
     private final AtomicReference<ShardCheckpoint> lastCheckpoint = new AtomicReference<>();
 
+    private final ESClient replicaESClient;
+
     @Inject
     @Builder
     public ShardReplicationTask(@Assisted final ShardReplicateRequest shardReplicateRequest,
                                 final TranslogCheckpointStore translogCheckpointStore,
-                                final ESClient esClient,
-                                final EventQueue<ChangeEvent> eventQueue) {
+                                final @Named("source") ESClient esClient,
+                                final EventQueue<ChangeEvent> eventQueue,
+                                final @Named("replica") ESClient replicaESClient) {
         this.shardReplicateRequest = shardReplicateRequest;
         this.translogCheckpointStore = translogCheckpointStore;
         this.esClient = esClient;
         this.eventQueue = eventQueue;
+        this.replicaESClient = replicaESClient;
     }
 
     @Override
@@ -79,39 +82,41 @@ public class ShardReplicationTask extends PollingJob<Boolean> {
 
         EsGetChangesResponse response = esClient.getShardChanges(request);
 
-        if (response == null) {
+        if (response == null || response.getChanges().isEmpty()) {
             return false;
         }
         log.info("Received {} changes for {}", response.getChanges().size(), jobId());
-        if (!response.getChanges().isEmpty()) {
 
 
-            SerializedTranslog translog = response.getChanges().get(response.getChanges().size() - 1);
+        ApplyTranslogRequest applyTranslogRequest = ApplyTranslogRequest.builder()
+                .shardId(shardRouting.getShardId())
+                .indexName(shardRouting.getIndexName())
+                .serializedTranslog(response.getChanges())
+                .maxSeqNoOfUpdatesOrDeletes(response.getMaxSeqNoOfUpdatesOrDeletes())
+                .build();
 
+        ApplyTranslogResponse resp = replicaESClient.replayShardChanges(applyTranslogRequest);
 
-            ChangeEvent changeEvent = ChangeEvent.builder()
-                    .translog(translog)
-                    .connectorSentTimestamp(System.currentTimeMillis())
-                    .build();
-
-
-            try {
-                eventQueue.write(changeEvent);
-            } catch (Exception e) {
-                log.error("Error writing to sink", e);
-            }
+        if (resp.isSuccess()) {
 
             val checkpoint = ShardCheckpoint.builder()
                     .shardId(shardRouting.getShardId())
                     .indexName(shardRouting.getIndexName())
                     .timestamp(System.currentTimeMillis())
-                    .sequence(translog.getSeqNo())
+                    .sequence(resp.getSequence())
                     .build();
 
+            log.info("REceived checkpoint: {}", resp.getSequence());
             lastCheckpoint.set(checkpoint);
             translogCheckpointStore.saveCheckpoint(checkpoint);
+        } else {
+            if (resp.getErrorCode().equals(ApplyTranslogResponse.ErrorCode.INDEX_DOES_NOT_EXISTS)) {
+                log.info("Index does not exists.. will reattempt");
+            }
 
-            log.info("Setting checkpoint for {} as {}", jobId(), checkpoint.getSequence());
+            if (resp.getErrorCode().equals(ApplyTranslogResponse.ErrorCode.MAPPING_UPDATE_REQUIRED)) {
+                log.info("Mapping update is required.. will wait for mapping to get applied");
+            }
         }
 
         return true;

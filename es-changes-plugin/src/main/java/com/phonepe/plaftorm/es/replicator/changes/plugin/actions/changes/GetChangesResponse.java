@@ -1,4 +1,4 @@
-package com.phonepe.plaftorm.es.replicator.changes.plugin.actions;
+package com.phonepe.plaftorm.es.replicator.changes.plugin.actions.changes;
 
 import lombok.Getter;
 import org.elasticsearch.action.ActionResponse;

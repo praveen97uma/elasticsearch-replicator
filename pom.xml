@@ -17,6 +17,7 @@
         <module>replicator-models</module>
         <module>es-connector-dw-bundle</module>
         <module>replicator-queue</module>
+        <module>es-replicator-contrib</module>
     </modules>
 
     <properties>
@@ -26,7 +27,7 @@
         <lombok.version>1.18.24</lombok.version>
         <dropwizard.version>2.1.0</dropwizard.version>
         <dw-guicey.version>5.6.1</dw-guicey.version>
-        <junit.version>5.8.2</junit.version>
+        <junit.version>4.13.2</junit.version>
         <curator.version>5.3.0</curator.version>
         <jackson.version>2.13.4</jackson.version>
         <vertx.version>4.3.4</vertx.version>
@@ -44,13 +45,6 @@
                 <groupId>io.dropwizard</groupId>
                 <artifactId>dropwizard-dependencies</artifactId>
                 <version>${dropwizard.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.junit</groupId>
-                <artifactId>junit-bom</artifactId>
-                <version>${junit.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -129,6 +123,14 @@
             <artifactId>logback-classic</artifactId>
             <version>1.2.5</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/junit/junit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
     <build>
         <extensions>

@@ -14,6 +14,8 @@ import com.phonepe.platform.es.replicator.models.GetIndexAndShardsMetadataReques
 import com.phonepe.platform.es.replicator.models.GetIndexAndShardsMetadataResponse;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.inject.Named;
+
 
 @Slf4j
 @Singleton
@@ -25,7 +27,7 @@ public class AutoFollowTask extends PollingTask implements ManagedLifecycle {
     private final IndexReplicationTaskFactory replicationTaskFactory;
 
     @Inject
-    public AutoFollowTask(String id, ESClient esClient, final JobExecutor<Boolean> jobExecutor, final IndexReplicationTaskFactory replicationTaskFactory) {
+    public AutoFollowTask(String id, @Named("source") ESClient esClient, final JobExecutor<Boolean> jobExecutor, final IndexReplicationTaskFactory replicationTaskFactory) {
         super(id);
         this.esClient = esClient;
         this.jobExecutor = jobExecutor;

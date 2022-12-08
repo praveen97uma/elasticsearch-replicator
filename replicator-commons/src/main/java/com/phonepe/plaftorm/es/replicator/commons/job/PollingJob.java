@@ -51,6 +51,7 @@ public abstract class PollingJob<T> implements Job<T> {
 //        }
     }
 
+    @SneakyThrows
     @Override
     public T execute(final JobContext<T> context, final JobResponseCombiner<T> responseCombiner) {
 //        this.executor.submit(() -> {
@@ -70,6 +71,7 @@ public abstract class PollingJob<T> implements Job<T> {
                 }
                 catch (Exception e) {
                     log.error("Error executing task: ", e);
+                    pollWaitStrategy.waitForNextPoll();
 //                    responseCombiner.handleError(e);
                 }
             }

@@ -1,8 +1,8 @@
 package com.phonepe.plaftorm.es.replicator.changes.plugin.rest;
 
-import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesAction;
-import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesRequest;
-import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesResponse;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.changes.GetChangesAction;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.changes.GetChangesRequest;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.changes.GetChangesResponse;
 import com.phonepe.platform.es.replicator.models.EsGetChangesResponse;
 import com.phonepe.platform.es.replicator.models.SerializedTranslog;
 import lombok.SneakyThrows;
@@ -19,18 +19,19 @@ import org.elasticsearch.index.translog.Translog;
 import org.elasticsearch.rest.*;
 
 import java.io.IOException;
+import java.util.Base64;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class GetShardChanges extends BaseRestHandler {
-    public GetShardChanges(final Settings settings, final RestController controller) {
+public class GetShardChangeOperations extends BaseRestHandler {
+    public GetShardChangeOperations(final Settings settings, final RestController controller) {
         super(settings);
         controller.registerHandler(RestRequest.Method.GET, "/index/shard/changes", this);
     }
 
     @Override
     public String getName() {
-        return GetShardChanges.class.getName();
+        return GetShardChangeOperations.class.getName();
     }
 
     @Override
@@ -40,12 +41,13 @@ public class GetShardChanges extends BaseRestHandler {
         String indexUUID = request.param("indexUUID");
         int shard = request.paramAsInt("shardId", -1);
         int fromSeqNo = request.paramAsInt("fromSeqNo", 0);
+        int toSeqNo = request.paramAsInt("toSeqNo", 0);
         ShardId shardId = new ShardId(indexName, indexUUID, shard);
 
 
 
         return channel -> {
-            GetChangesRequest getChangesRequest = new GetChangesRequest(shardId, fromSeqNo, 0);
+            GetChangesRequest getChangesRequest = new GetChangesRequest(shardId, fromSeqNo, toSeqNo);
             log.info("Sending replication request {}", getChangesRequest);
 
             nodeClient.executeLocally(GetChangesAction.INSTANCE, getChangesRequest, new ActionListener<GetChangesResponse>() {
@@ -54,7 +56,7 @@ public class GetShardChanges extends BaseRestHandler {
                 public void onResponse(GetChangesResponse getChangesResponse) {
 
                     EsGetChangesResponse response = EsGetChangesResponse.builder()
-                            .changes(getChangesResponse.getChanges().stream().map(GetShardChanges::translate).collect(Collectors.toList()))
+                            .changes(getChangesResponse.getChanges().stream().map(GetShardChangeOperations::translate).collect(Collectors.toList()))
                             .fromSeqNo(getChangesRequest.getFromSeqNo())
                             .lastSyncedGlobalCheckpoint(getChangesResponse.getLastSyncedGlobalCheckpoint())
                             .maxSeqNoOfUpdatesOrDeletes(getChangesResponse.getMaxSeqNoOfUpdatesOrDeletes())
@@ -76,13 +78,14 @@ public class GetShardChanges extends BaseRestHandler {
     }
 
     private static SerializedTranslog translate(final Translog.Operation change) {
+        log.info("Translog seqNo: {}, primaryTerm: {}, OpType: {}", change.seqNo(), change.primaryTerm(), change.opType());
         BytesStreamOutput streamOutput = new BytesStreamOutput();
         try {
             Translog.Operation.writeOperation(streamOutput, change);
             return SerializedTranslog.builder()
-                    .translogBytes(streamOutput.bytes().toBytesRef().bytes)
-                    .seqNo(change.seqNo())
+                    .translogBytes(Base64.getEncoder().encodeToString(streamOutput.bytes().toBytesRef().bytes))
                     .opType(change.opType().name())
+                    .seqNo(change.seqNo())
                     .build();
         } catch (IOException e) {
             throw new RuntimeException(e);

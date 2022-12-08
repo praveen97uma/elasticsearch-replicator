@@ -69,7 +69,8 @@ public class GetIndexMetadata extends BaseRestHandler {
                         .noOfReplicas(indexMetaData.getNumberOfReplicas())
                         .state(indexMetaData.getState().name())
                         .mappingVersion(indexMetaData.getMappingVersion())
-                        .mapping(indexMetaData.mapping().source().compressed())
+                        .mapping(indexMetaData.mapping().source().string())
+//                        .settingsBytes(indexMetaData.getSettings().)
                         .mappingType(indexMetaData.mapping().type())
                         .shardRoutings(routingsMap.getOrDefault(indexMetaData.getIndex().getName(), List.of()))
                         .build());

@@ -1,6 +1,5 @@
-package com.phonepe.plaftorm.es.replicator.changes.plugin.actions;
+package com.phonepe.plaftorm.es.replicator.changes.plugin.actions.changes;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

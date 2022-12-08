@@ -1,4 +1,4 @@
-package com.phonepe.platform.es.connector.dw.bundle;
+package com.phonepe.platform.es.replicator.contrib;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
@@ -33,7 +33,7 @@ public class ZkTranslogCheckpointStore implements TranslogCheckpointStore {
                         .withMode(CreateMode.PERSISTENT)
                         .forPath(path, mapper.writeValueAsBytes(checkpoint));
             } else {
-                log.info("ZNode  exists for path: {}, updating", path);
+                log.info("ZNode  exists for path: {}, updating checkpoint to {}", path, checkpoint.getSequence());
                 curatorFramework.setData()
                         .forPath(path, mapper.writeValueAsBytes(checkpoint));
             }

@@ -5,6 +5,7 @@ import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
 import com.phonepe.plaftorm.es.replicator.commons.job.*;
 import com.phonepe.platform.es.client.ESClient;
+import com.phonepe.platform.es.connector.factories.MetadatPollerTaskFactory;
 import com.phonepe.platform.es.connector.factories.ShardReplicationTaskFactory;
 import com.phonepe.platform.es.connector.models.IndexReplicateRequest;
 import com.phonepe.platform.es.connector.models.ShardReplicateRequest;
@@ -12,6 +13,7 @@ import com.phonepe.platform.es.replicator.models.EsShardRouting;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.inject.Named;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +25,8 @@ public class IndexReplicationTask implements Job<Boolean> {
 
     private final ShardReplicationTaskFactory shardReplicationTaskFactory;
 
+    private final MetadatPollerTaskFactory metadatPollerTaskFactory;
+
     private final ESClient esClient;
 
     @Inject
@@ -30,11 +34,13 @@ public class IndexReplicationTask implements Job<Boolean> {
     public IndexReplicationTask(@Assisted final IndexReplicateRequest indexReplicateRequest,
                                 final JobExecutor<Boolean> jobExecutor,
                                 final ShardReplicationTaskFactory shardReplicationTaskFactory,
-                                final ESClient esClient) {
+                                final MetadatPollerTaskFactory metadatPollerTaskFactory,
+                                final @Named("source") ESClient esClient) {
 
         this.indexReplicateRequest = indexReplicateRequest;
         this.jobExecutor = jobExecutor;
         this.shardReplicationTaskFactory = shardReplicationTaskFactory;
+        this.metadatPollerTaskFactory = metadatPollerTaskFactory;
         this.esClient = esClient;
     }
 
@@ -87,10 +93,16 @@ public class IndexReplicationTask implements Job<Boolean> {
                                 .build()))
                 .collect(Collectors.toList());
 
+        List<Job<Boolean>> metadatJobs = newShards.stream().map(EsShardRouting::getIndexName).distinct()
+                .map(metadatPollerTaskFactory::create)
+                .collect(Collectors.toList());
+
         log.info("Launching jobs for {}", newShards);
 
         jobExecutor.scheduleAll(jobs, new BooleanResponseCombiner(), x -> {
 //            log.info("IndexReplicationTask: Task Exec result: {}", x);
         });
+
+        jobExecutor.scheduleAll(metadatJobs, new BooleanResponseCombiner(), x-> {});
     }
 }

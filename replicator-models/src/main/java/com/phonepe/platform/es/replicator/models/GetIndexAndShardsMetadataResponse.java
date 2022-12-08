@@ -18,15 +18,11 @@ public class GetIndexAndShardsMetadataResponse implements ToXContentObject {
     String currentNodeId;
 
     List<EsIndexMetadata> indexMetadatas;
-//    List<IndexData> indices;
-//    List<EsShardRouting> shardRoutings;
 
     @Override
     public XContentBuilder toXContent(final XContentBuilder builder, final Params params) throws IOException {
         builder.startObject();
         builder.field("currentNodeId", currentNodeId);
-//        builder.field("indices", indices);
-//        builder.field("shardRoutings", shardRoutings);
         builder.field("indexMetadatas", indexMetadatas);
         builder.endObject();
         return builder;

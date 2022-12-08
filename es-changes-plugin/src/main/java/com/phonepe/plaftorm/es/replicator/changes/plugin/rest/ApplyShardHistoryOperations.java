@@ -1,29 +1,39 @@
 package com.phonepe.plaftorm.es.replicator.changes.plugin.rest;
 
-import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesAction;
-import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesRequest;
-import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.GetChangesResponse;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.replay.ReplayChangesAction;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.replay.ReplayChangesReq;
+import com.phonepe.plaftorm.es.replicator.changes.plugin.actions.replay.ReplayChangesResponse;
+import com.phonepe.platform.es.replicator.models.ApplyTranslogRequest;
+import com.phonepe.platform.es.replicator.models.ApplyTranslogResponse;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.io.stream.BytesStreamOutput;
+import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.common.bytes.BytesArray;
+import org.elasticsearch.common.io.stream.ByteBufferStreamInput;
+import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.translog.Translog;
 import org.elasticsearch.rest.*;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Base64;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.phonepe.plaftorm.es.replicator.changes.plugin.injection.Dependencies.clusterService;
 
 @Slf4j
 public class ApplyShardHistoryOperations extends BaseRestHandler {
     public ApplyShardHistoryOperations(final Settings settings, final RestController controller) {
         super(settings);
-        controller.registerHandler(RestRequest.Method.GET, "/_translog/operations", this);
+        controller.registerHandler(RestRequest.Method.POST, "/index/shard/translog/apply", this);
     }
 
     @Override
@@ -33,58 +43,92 @@ public class ApplyShardHistoryOperations extends BaseRestHandler {
 
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient nodeClient) throws IOException {
-        String indexName = request.param("indexName");
-        String indexUUID = request.param("indexUUID");
-        int shard = request.paramAsInt("shardId", -1);
-        int fromSeqNo = request.paramAsInt("fromSeqNo", 0);
-        ShardId shardId = new ShardId(indexName, indexUUID, shard);
+
+        // TODO: handle non existence of targetIndex
+
+        // index uuid should be of the index in the replica cluster
 
 
 
         return channel -> {
-            channel.request().content();
-//            XContentParser parser = JsonXContentParser.
-            GetChangesRequest getChangesRequest = new GetChangesRequest(shardId, fromSeqNo, 0);
-            log.info("Sending replication request {}", getChangesRequest);
+            ApplyTranslogRequest applyTranslogRequest = ApplyTranslogRequest.fromXContent(request.contentParser());
 
-//            ActionFuture<GetChangesResponse> responseActionFuture = nodeClient.execute(GetChangesAction.INSTANCE, getChangesRequest);
-//            GetChangesResponse response = responseActionFuture.get();
-//
-//            XContentBuilder builder = XContentFactory.jsonBuilder();
-//            builder.startObject();
-////                    builder.field("currentNodeId", nodeClient.getLocalNodeId());
-//            builder.field("changes", response.getChanges());
-////                    builder.field("shardRoutings", shardRoutings);
-//            builder.endObject();
-//            BytesRestResponse r = new BytesRestResponse(RestStatus.OK, builder);
-//            channel.sendResponse(r);
+            log.info("Got apply changes request for indexName: {}, ShardId: {}", applyTranslogRequest.getIndexName(),
+                    applyTranslogRequest.getShardId());
 
-            nodeClient.executeLocally(GetChangesAction.INSTANCE, getChangesRequest, new ActionListener<GetChangesResponse>() {
+            IndexMetaData targetIndex = clusterService.state().getMetaData()
+                    .index(applyTranslogRequest.getIndexName());
+
+            if (targetIndex == null) {
+                ApplyTranslogResponse applyTranslogResponse = ApplyTranslogResponse.builder()
+                        .success(false)
+                        .errorCode(ApplyTranslogResponse.ErrorCode.INDEX_DOES_NOT_EXISTS)
+                        .sequence(-1)
+                        .build();
+
+                XContentBuilder builder = XContentFactory.jsonBuilder();
+
+                BytesRestResponse response = new BytesRestResponse(RestStatus.OK,
+                        applyTranslogResponse.toXContent(builder, ToXContent.EMPTY_PARAMS));
+                channel.sendResponse(response);
+                return;
+            }
+
+            ShardId shardId = new ShardId(applyTranslogRequest.getIndexName(), targetIndex.getIndexUUID(), applyTranslogRequest.getShardId());
+
+            List<Translog.Operation> ops = translateToTranslogOp(applyTranslogRequest);
+
+            ReplayChangesReq applyChangesRequest = new ReplayChangesReq(
+                    shardId,
+                    applyTranslogRequest.getIndexName(),
+                    ops,
+                    applyTranslogRequest.getMaxSeqNoOfUpdatesOrDeletes());
+
+            nodeClient.execute(ReplayChangesAction.INSTANCE, applyChangesRequest, new ActionListener<>() {
                 @Override
                 @SneakyThrows
-                public void onResponse(GetChangesResponse getChangesResponse) {
-                    log.info("Received response {}", getChangesResponse);
-                    BytesStreamOutput changesStream = new BytesStreamOutput();
-                    changesStream.writeCollection(getChangesResponse.getChanges(), Translog.Operation::writeOperation);
+                public void onResponse(ReplayChangesResponse applyChangesResponse) {
+                    log.info("Received response {}", applyChangesResponse);
 
+                    ApplyTranslogResponse applyTranslogResponse = ApplyTranslogResponse.builder()
+                            .success(applyChangesResponse.isSuccess())
+                            .sequence(applyChangesResponse.getLastSuccessfulSeqNo())
+                            .errorCode(applyChangesResponse.getErrorCode())
+                            .build();
 
                     XContentBuilder builder = XContentFactory.jsonBuilder();
-                    builder.startObject();
-//                    builder.field("currentNodeId", nodeClient.getLocalNodeId());
-                    builder.field("changes", changesStream.bytes());
-//                    builder.field("shardRoutings", shardRoutings);
-                    builder.endObject();
-                    BytesRestResponse response = new BytesRestResponse(RestStatus.OK, builder);
+
+                    BytesRestResponse response = new BytesRestResponse(RestStatus.OK,
+                            applyTranslogResponse.toXContent(builder, ToXContent.EMPTY_PARAMS));
                     channel.sendResponse(response);
                 }
 
+                @SneakyThrows
                 @Override
                 public void onFailure(Exception e) {
                     log.error("Error ", e);
-                    channel.sendResponse(new BytesRestResponse(RestStatus.INTERNAL_SERVER_ERROR, e.getLocalizedMessage()));
+                    ApplyTranslogResponse applyTranslogResponse = ApplyTranslogResponse.builder()
+                            .success(false)
+                            .errorMessage(e.getLocalizedMessage())
+                            .build();
+                    XContentBuilder builder = XContentFactory.jsonBuilder();
+                    channel.sendResponse(new BytesRestResponse(RestStatus.INTERNAL_SERVER_ERROR,
+                            applyTranslogResponse.toXContent(builder, ToXContent.EMPTY_PARAMS)));
                 }
             });
 
         };
+    }
+
+    private static List<Translog.Operation> translateToTranslogOp(final ApplyTranslogRequest applyTranslogRequest) {
+        return applyTranslogRequest.getSerializedTranslog().stream().map(translog -> {
+            BytesArray array = new BytesArray(Base64.getDecoder().decode(translog.getTranslogBytes()));
+            StreamInput streamInput = new ByteBufferStreamInput(ByteBuffer.wrap(array.array()));
+            try {
+                return Translog.Operation.readOperation(streamInput);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
     }
 }
